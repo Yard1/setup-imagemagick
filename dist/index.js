@@ -94,8 +94,9 @@ function run() {
                 core.info("Downloading magick from: " + LINUX_URL_BASE);
                 let latestUrl = yield getLatestVersionUrl();
                 let version = (0, util_1.extractVersionFromUrl)(latestUrl);
-                core.info("Downloading version " + version);
-                const magickPath = yield tc.downloadTool(`${LINUX_URL_BASE}/releases/download/${version}/ImageMagick-${version}-gcc-x86_64.AppImage`);
+                const appImageUrl = yield (0, util_1.getAppImageDownloadUrl)(version);
+                core.info("Downloading version " + version + " from " + appImageUrl);
+                const magickPath = yield tc.downloadTool(appImageUrl);
                 yield io.mv(magickPath, `${binPath}/magick`);
                 exec.exec("chmod", ["+x", `${binPath}/magick`]);
                 if (doCache && cacheRestored === undefined) {
@@ -120,7 +121,7 @@ run();
 /***/ }),
 
 /***/ 24258:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
@@ -139,8 +140,21 @@ run();
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.extractVersionFromUrl = extractVersionFromUrl;
+exports.getAppImageDownloadUrls = getAppImageDownloadUrls;
+exports.urlExists = urlExists;
+exports.getAppImageDownloadUrl = getAppImageDownloadUrl;
+const https = __nccwpck_require__(65692);
 function extractVersionFromUrl(url) {
     const regex = /^https:\/\/github\.com\/ImageMagick\/ImageMagick\/releases\/tag\/(.*)$/;
     const match = url.match(regex);
@@ -150,6 +164,34 @@ function extractVersionFromUrl(url) {
     else {
         return match[1];
     }
+}
+function getAppImageDownloadUrls(version) {
+    return [
+        `https://github.com/ImageMagick/ImageMagick/releases/download/${version}/ImageMagick-${version}-x86_64.AppImage`,
+        `https://github.com/ImageMagick/ImageMagick/releases/download/${version}/ImageMagick-${version}-gcc-x86_64.AppImage`,
+    ];
+}
+function urlExists(url) {
+    return new Promise((resolve) => {
+        const request = https.get(url, { method: "HEAD" }, (response) => {
+            var _a;
+            const statusCode = (_a = response.statusCode) !== null && _a !== void 0 ? _a : 0;
+            response.resume();
+            resolve(statusCode >= 200 && statusCode < 400);
+        });
+        request.on("error", () => resolve(false));
+    });
+}
+function getAppImageDownloadUrl(version_1) {
+    return __awaiter(this, arguments, void 0, function* (version, exists = urlExists) {
+        const urls = getAppImageDownloadUrls(version);
+        for (const url of urls) {
+            if (yield exists(url)) {
+                return url;
+            }
+        }
+        return urls[0];
+    });
 }
 //# sourceMappingURL=util.js.map
 
